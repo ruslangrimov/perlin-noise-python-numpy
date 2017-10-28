@@ -46,42 +46,39 @@ def generate_2D_perlin_noise(size, ns):
     nc = int(size / ns)  # number of nodes
     grid_size = int(size / ns + 1)  # number of points in grid
 
+    # generate grid of vectors
     v = generate_unit_vectors(grid_size)
 
     # generate some constans in advance
-
     ad, ar = np.arange(ns), np.arange(-ns, 0, 1)
 
-    # vectors from each of 4 nearest nodes to a point in the NSxNS patch
-    vd = np.zeros((4, ns, ns, 2))
+    # vectors from each of the 4 nearest nodes to a point in the NSxNS patch
+    vd = np.zeros((ns, ns, 4, 1, 2))
     for (l1, l2), c in zip(product((ad, ar), repeat=2), count()):
-        vd[c, :, :] = np.stack(np.meshgrid(l2, l1, indexing='ij'), axis=2)
+        vd[:, :, c, 0] = np.stack(np.meshgrid(l2, l1, indexing='xy'), axis=2)
 
     # interpolation coefficients
-    d = qz(np.stack((np.zeros((2, ns, ns)),
-                     np.stack(np.meshgrid(ad, ad, indexing='ij')))) / ns)
-    d[0] = 1 - d[1]
+    d = qz(np.stack((np.zeros((ns, ns, 2)),
+                     np.stack(np.meshgrid(ad, ad, indexing='ij'), axis=2)),
+           axis=2) / ns)
+    d[:, :, 0] = 1 - d[:, :, 1]
+    # make copy and reshape for convenience
+    d0 = d[..., 0].copy().reshape(ns, ns, 1, 2)
+    d1 = d[..., 1].copy().reshape(ns, ns, 2, 1)
 
     # make an empy matrix
     m = np.zeros((size, size))
     # reshape for convenience
     t = m.reshape(nc, ns, nc, ns)
 
-    def td(v1, v2):
-        return np.tensordot(v1, v2, axes=([0], [2]))
-
-    # fill the image with Perlin noise
+    # calculate values for a NSxNS patch at a time
     for i, j in product(np.arange(nc), repeat=2):  # loop through the grid
-        # calculate values for a NSxNS patch at a time
-        n0 = td(v[i, j], vd[0])
-        n1 = td(v[i + 1, j], vd[1])
-        j0 = d[0, 0] * n0 + d[1, 0] * n1
-
-        n0 = td(v[i, j + 1], vd[2])
-        n1 = td(v[i + 1, j + 1], vd[3])
-        j1 = d[0, 0] * n0 + d[1, 0] * n1
-
-        t[i, :, j, :] = d[0, 1] * j0 + d[1, 1] * j1
+        # get four node vectors
+        av = v[i:i+2, j:j+2].reshape(4, 2, 1)
+        # 'vector from node to point' dot 'node vector'
+        at = np.matmul(vd, av).reshape(ns, ns, 2, 2)
+        # horizontal and vertical interpolation
+        t[i, :, j, :] = np.matmul(np.matmul(d0, at), d1).reshape(ns, ns)
 
     return m
 
@@ -89,15 +86,15 @@ img = generate_2D_perlin_noise(200, 20)
 plt.imshow(img, cmap=cm.gray)
 
 # generate "sky"
-# img0 = generate_2D_perlin_noise(400, 80)
-# img1 = generate_2D_perlin_noise(400, 40)
-# img2 = generate_2D_perlin_noise(400, 20)
-# img3 = generate_2D_perlin_noise(400, 10)
+#img0 = generate_2D_perlin_noise(400, 80)
+#img1 = generate_2D_perlin_noise(400, 40)
+#img2 = generate_2D_perlin_noise(400, 20)
+#img3 = generate_2D_perlin_noise(400, 10)
 #
-# img = (img0 + img1 + img2 + img3) / 4
-# cmap = LinearSegmentedColormap.from_list('sky',
+#img = (img0 + img1 + img2 + img3) / 4
+#cmap = LinearSegmentedColormap.from_list('sky',
 #                                         [(0, '#0572D1'),
 #                                          (0.75, '#E5E8EF'),
 #                                          (1, '#FCFCFC')])
-# img = cm.ScalarMappable(cmap=cmap).to_rgba(img)
-# plt.imshow(img)
+#img = cm.ScalarMappable(cmap=cmap).to_rgba(img)
+#plt.imshow(img)
