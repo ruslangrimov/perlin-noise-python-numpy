@@ -6,12 +6,20 @@ from itertools import product, count
 from matplotlib.colors import LinearSegmentedColormap
 
 
-# generate uniform unit vectors
+# it produce more vectors pointing diagonally than vectors pointing along
+# an axis
+# # generate uniform unit vectors
+# def generate_unit_vectors(n):
+#     'Generates matrix NxN of unit length vectors'
+#     v = np.random.uniform(-1, 1, (n, n, 2))
+#     l = np.sqrt(v[:, :, 0] ** 2 + v[:, :, 1] ** 2).reshape(n, n, 1)
+#     v /= l
+#     return v
+
 def generate_unit_vectors(n):
     'Generates matrix NxN of unit length vectors'
-    v = np.random.uniform(-1, 1, (n, n, 2))
-    l = np.sqrt(v[:, :, 0] ** 2 + v[:, :, 1] ** 2).reshape(n, n, 1)
-    v /= l
+    phi = np.random.uniform(0, 2*np.pi, (n, n))
+    v = np.stack((np.cos(phi), np.sin(phi)), axis=-1)
     return v
 
 
